@@ -1,6 +1,18 @@
 services:
   - type: web
-    name: fitcheck-website
+    name: fitcheck
     env: php
     buildCommand: "./build.sh"
     startCommand: "php -S 0.0.0.0:$PORT"
+    plan: free
+    envVars:
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        sync: false
