@@ -1,22 +1,43 @@
 <?php
 // ============================================
-// DATABASE CONFIGURATION - AIVEN CLOUD MYSQL
+// DATABASE CONFIGURATION - LOCAL & PRODUCTION
 // ============================================
 
-// Get credentials from environment variables (Render) or use defaults
-$host = getenv('DB_HOST') ?: 'mysql-1085e61e-fit-check.e.aivencloud.com';
-$port = getenv('DB_PORT') ?: 14357;
-$db_user = getenv('DB_USER') ?: 'avnadmin';
-$db_pass = getenv('DB_PASSWORD') ?: '';  // Password from environment variable
-$db_name = getenv('DB_NAME') ?: 'defaultdb';
+// Check if running locally or on Render
+$is_local = ($_SERVER['SERVER_NAME'] ?? '') == 'localhost' || 
+            ($_SERVER['SERVER_ADDR'] ?? '') == '127.0.0.1';
+
+if ($is_local) {
+    // ============================================
+    // LOCAL XAMPP MYSQL
+    // ============================================
+    $host = 'localhost';
+    $port = 3306;
+    $db_user = 'root';
+    $db_pass = '';
+    $db_name = 'fitcheck_new';
+} else {
+    // ============================================
+    // PRODUCTION (Render) - AIVEN CLOUD MYSQL
+    // ============================================
+    $host = getenv('DB_HOST') ?: 'mysql-1085e61e-fit-check.e.aivencloud.com';
+    $port = getenv('DB_PORT') ?: 14357;
+    $db_user = getenv('DB_USER') ?: 'avnadmin';
+    $db_pass = getenv('DB_PASSWORD') ?: '';
+    $db_name = getenv('DB_NAME') ?: 'defaultdb';
+}
 
 try {
-    // Create MySQL connection with SSL (required for Aiven)
+    // Create MySQL connection
     $conn = new mysqli();
     
-    // Enable SSL (REQUIRED for Aiven)
-    $conn->ssl_set(null, null, null, null, null);
-    $conn->real_connect($host, $db_user, $db_pass, $db_name, $port, null, MYSQLI_CLIENT_SSL);
+    // Enable SSL for production (Aiven)
+    if (!$is_local) {
+        $conn->ssl_set(null, null, null, null, null);
+        $conn->real_connect($host, $db_user, $db_pass, $db_name, $port, null, MYSQLI_CLIENT_SSL);
+    } else {
+        $conn->real_connect($host, $db_user, $db_pass, $db_name, $port);
+    }
     
     // Check connection
     if ($conn->connect_error) {
