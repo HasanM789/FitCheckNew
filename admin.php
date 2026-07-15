@@ -647,29 +647,22 @@ function getStatusBadge($status) {
         }
         
         // ============================================
-        // BAR CHART - SALES OVERVIEW WITH RETRY LOGIC
+        // BAR CHART - SALES OVERVIEW (SINGLE LOAD)
         // ============================================
         let salesChart = null;
-        let chartAttempts = 0;
-        const MAX_ATTEMPTS = 15;
+        let chartLoaded = false;
 
         function loadChart() {
+            // Prevent multiple loads
+            if (chartLoaded) {
+                console.log('📊 Chart already loaded, skipping...');
+                return;
+            }
+            
             // Check if Chart.js is available
             if (typeof Chart === 'undefined') {
-                chartAttempts++;
-                if (chartAttempts < MAX_ATTEMPTS) {
-                    console.log(`⏳ Waiting for Chart.js... Attempt ${chartAttempts}/${MAX_ATTEMPTS}`);
-                    setTimeout(loadChart, 500);
-                } else {
-                    console.error('❌ Chart.js failed to load after ' + MAX_ATTEMPTS + ' attempts.');
-                    var canvas = document.getElementById('salesChart');
-                    if (canvas) {
-                        canvas.parentNode.innerHTML = 
-                            '<div style="color: #dc3545; text-align: center; padding: 50px; background: #1a1c22; border-radius: 8px;">' +
-                            '❌ Chart.js failed to load. Please refresh the page.' +
-                            '</div>';
-                    }
-                }
+                console.log('⏳ Waiting for Chart.js...');
+                setTimeout(loadChart, 500);
                 return;
             }
 
@@ -684,12 +677,6 @@ function getStatusBadge($status) {
                 })
                 .then(data => {
                     console.log('📊 Chart data received:', data);
-                    
-                    // Check if we have data
-                    if (!data || !data.months || data.months.length === 0) {
-                        console.warn('⚠️ No chart data received from server');
-                        return;
-                    }
                     
                     const canvas = document.getElementById('salesChart');
                     if (!canvas) {
@@ -709,7 +696,7 @@ function getStatusBadge($status) {
                     salesChart = new Chart(ctx, {
                         type: 'bar',
                         data: {
-                            labels: data.months,
+                            labels: data.months || [],
                             datasets: [
                                 {
                                     label: 'Revenue (BD)',
@@ -780,61 +767,37 @@ function getStatusBadge($status) {
                         }
                     });
                     
+                    chartLoaded = true;
                     console.log('✅ Chart created successfully!');
                 })
                 .catch(error => {
                     console.error('❌ Error loading chart data:', error);
-                    var canvas = document.getElementById('salesChart');
-                    if (canvas) {
-                        canvas.parentNode.innerHTML = 
-                            '<div style="color: #ffc107; text-align: center; padding: 50px; background: #1a1c22; border-radius: 8px;">' +
-                            '⚠️ Error loading chart data. Please refresh the page.' +
-                            '<br><small style="color: #94a3b8;">' + error.message + '</small>' +
-                            '</div>';
-                    }
                 });
         }
 
         function refreshChart() {
-            console.log('🔄 Refreshing chart...');
-            chartAttempts = 0;
-            // Reset the canvas container if it was replaced
-            var container = document.querySelector('.chart-wrapper');
-            if (container && !container.querySelector('canvas')) {
-                container.innerHTML = '<canvas id="salesChart"></canvas>';
+            console.log('🔄 Manual refresh triggered...');
+            chartLoaded = false;
+            if (salesChart) {
+                salesChart.destroy();
+                salesChart = null;
             }
             setTimeout(loadChart, 500);
         }
 
-        // Load chart when page loads - with multiple event listeners for safety
+        // Load chart ONCE when page loads
         document.addEventListener('DOMContentLoaded', function() {
             console.log('📄 DOM loaded, starting chart...');
-            setTimeout(loadChart, 800);
+            setTimeout(loadChart, 500);
         });
 
-        // Also try on window load
-        window.addEventListener('load', function() {
-            console.log('📄 Window loaded, checking chart...');
-            if (typeof Chart === 'undefined' || !salesChart) {
-                setTimeout(loadChart, 500);
-            }
-        });
-
-        // Emergency fallback - try after 3 seconds
+        // Only one fallback - try after 2 seconds if not loaded
         setTimeout(function() {
-            if (typeof Chart !== 'undefined' && !salesChart) {
-                console.log('⏰ Emergency chart load triggered...');
+            if (typeof Chart !== 'undefined' && !chartLoaded) {
+                console.log('⏰ Fallback chart load triggered...');
                 loadChart();
             }
-        }, 3000);
-        
-        // Extra fallback - try after 5 seconds
-        setTimeout(function() {
-            if (typeof Chart !== 'undefined' && !salesChart) {
-                console.log('⏰ Final emergency chart load triggered...');
-                loadChart();
-            }
-        }, 5000);
+        }, 2000);
     </script>
 </body>
 </html>
