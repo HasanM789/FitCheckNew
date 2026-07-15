@@ -32,6 +32,9 @@ if (isset($_SESSION['user_id'])) {
     <title>FitCheck — Premium Apparel</title>
     <link rel="stylesheet" href="styles.css">
     
+    <!-- Chart.js Library for Bar Charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <!-- Load theme before page renders -->
     <script>
     (function() {
@@ -61,6 +64,18 @@ if (isset($_SESSION['user_id'])) {
     <nav class="fc-nav-links-group">
         <a href="index.php" class="fc-nav-item">Home</a>
         <a href="catalog.php" class="fc-nav-item">Catalog</a>
+        
+        <!-- Wishlist Heart Icon -->
+        <a href="wishlist.php" class="fc-nav-item" style="display: flex; align-items: center; gap: 4px; padding: 8px 4px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-primary);">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <?php if ($wishlist_count > 0): ?>
+                <span style="background: #dc3545; color: #fff; border-radius: 50%; padding: 0px 5px; font-size: 9px; min-width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; line-height: 1;">
+                    <?php echo $wishlist_count; ?>
+                </span>
+            <?php endif; ?>
+        </a>
         
         <?php if (isset($_SESSION['user_id'])): ?>
             <div class="fc-account-wrapper">
@@ -109,18 +124,6 @@ if (isset($_SESSION['user_id'])) {
             </div>
         <?php endif; ?>
         
-        <!-- WISHLIST HEART ICON - RIGHT OF ACCOUNT -->
-        <a href="wishlist.php" class="fc-nav-item" style="display: flex; align-items: center; gap: 4px; padding: 8px 4px;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-primary);">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-            </svg>
-            <?php if ($wishlist_count > 0): ?>
-                <span style="background: #dc3545; color: #fff; border-radius: 50%; padding: 0px 5px; font-size: 9px; min-width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; line-height: 1;">
-                    <?php echo $wishlist_count; ?>
-                </span>
-            <?php endif; ?>
-        </a>
-
         <!-- THEME TOGGLE BUTTON -->
         <button id="theme-toggle" onclick="toggleTheme()" 
                 style="background: transparent; border: none; color: var(--text-primary); font-size: 18px; cursor: pointer; padding: 8px 4px; border-radius: 50%; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center;">

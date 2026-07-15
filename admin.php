@@ -212,6 +212,15 @@ function getStatusBadge($status) {
         .stock-out { color: #dc3545; }
         .stock-high { color: #28a745; }
         
+        .chart-container { background: #1a1c22; border-radius: 8px; border: 1px solid #2d2d2d; padding: 25px; margin-bottom: 25px; }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .chart-header h3 { color: #fff; font-size: 16px; margin: 0; }
+        .chart-wrapper { width: 100%; height: 300px; position: relative; }
+        .chart-legend { display: flex; justify-content: center; gap: 30px; margin-top: 15px; flex-wrap: wrap; }
+        .chart-legend-item { display: flex; align-items: center; gap: 8px; }
+        .chart-legend-color { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+        .chart-legend-text { color: #94a3b8; font-size: 12px; }
+        
         @media (max-width: 768px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 480px) { .stats-grid { grid-template-columns: 1fr; } }
     </style>
@@ -536,18 +545,47 @@ function getStatusBadge($status) {
         <?php endif; ?>
 
         <!-- ============================================ -->
-        <!-- TAB 5: REPORTS -->
+        <!-- TAB 5: REPORTS - WITH BAR CHART -->
         <!-- ============================================ -->
         <?php if ($active_tab == 'reports'): ?>
 
         <div class="section-title">📈 Sales Reports</div>
 
+        <!-- Revenue Cards -->
         <div class="revenue-grid">
-            <div class="revenue-card"><div class="amount"><?php echo number_format($daily_revenue, 2); ?> BD</div><div class="label">Today's Revenue</div></div>
-            <div class="revenue-card"><div class="amount"><?php echo number_format($weekly_revenue, 2); ?> BD</div><div class="label">This Week's Revenue</div></div>
-            <div class="revenue-card"><div class="amount"><?php echo number_format($monthly_revenue, 2); ?> BD</div><div class="label">This Month's Revenue</div></div>
+            <div class="revenue-card"><div class="amount"><?php echo number_format($daily_revenue, 2); ?> BD</div><div class="label">Today</div></div>
+            <div class="revenue-card"><div class="amount"><?php echo number_format($weekly_revenue, 2); ?> BD</div><div class="label">This Week</div></div>
+            <div class="revenue-card"><div class="amount"><?php echo number_format($monthly_revenue, 2); ?> BD</div><div class="label">This Month</div></div>
         </div>
 
+        <!-- ============================================ -->
+        <!-- BAR CHART - SALES OVERVIEW -->
+        <!-- ============================================ -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3>📊 Monthly Sales Overview</h3>
+                <button onclick="refreshChart()" style="background: transparent; border: 1px solid #2d2d2d; color: #94a3b8; padding: 4px 16px; border-radius: 4px; cursor: pointer;">↻ Refresh</button>
+            </div>
+            
+            <!-- Chart Container -->
+            <div class="chart-wrapper">
+                <canvas id="salesChart"></canvas>
+            </div>
+            
+            <!-- Chart Legend -->
+            <div class="chart-legend">
+                <div class="chart-legend-item">
+                    <span class="chart-legend-color" style="background: #dc3545;"></span>
+                    <span class="chart-legend-text">Revenue (BD)</span>
+                </div>
+                <div class="chart-legend-item">
+                    <span class="chart-legend-color" style="background: #28a745;"></span>
+                    <span class="chart-legend-text">Orders Count</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Statistics Table -->
         <div class="section-title">📊 Order Statistics</div>
         <div class="table-wrapper">
             <table>
@@ -580,6 +618,109 @@ function getStatusBadge($status) {
                 checkboxes[i].checked = source.checked;
             }
         }
+        
+        // ============================================
+        // BAR CHART - SALES OVERVIEW
+        // ============================================
+        let salesChart = null;
+
+        function loadChart() {
+            fetch('chart_data.php')
+                .then(response => response.json())
+                .then(data => {
+                    const ctx = document.getElementById('salesChart').getContext('2d');
+                    
+                    // Destroy existing chart if it exists
+                    if (salesChart) {
+                        salesChart.destroy();
+                    }
+                    
+                    // Create new chart
+                    salesChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.months,
+                            datasets: [
+                                {
+                                    label: 'Revenue (BD)',
+                                    data: data.revenue,
+                                    backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                                    borderColor: '#dc3545',
+                                    borderWidth: 2,
+                                    borderRadius: 4,
+                                    yAxisID: 'y'
+                                },
+                                {
+                                    label: 'Orders',
+                                    data: data.orders,
+                                    backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                                    borderColor: '#28a745',
+                                    borderWidth: 2,
+                                    borderRadius: 4,
+                                    yAxisID: 'y1'
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    labels: {
+                                        color: '#94a3b8',
+                                        font: {
+                                            size: 12
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    grid: {
+                                        color: '#2d2d2d'
+                                    },
+                                    ticks: {
+                                        color: '#94a3b8'
+                                    }
+                                },
+                                y: {
+                                    beginAtZero: true,
+                                    position: 'left',
+                                    grid: {
+                                        color: '#2d2d2d'
+                                    },
+                                    ticks: {
+                                        color: '#94a3b8',
+                                        callback: function(value) {
+                                            return value + ' BD';
+                                        }
+                                    }
+                                },
+                                y1: {
+                                    beginAtZero: true,
+                                    position: 'right',
+                                    grid: {
+                                        drawOnChartArea: false
+                                    },
+                                    ticks: {
+                                        color: '#94a3b8'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                })
+                .catch(error => console.error('Error loading chart data:', error));
+        }
+
+        function refreshChart() {
+            loadChart();
+        }
+
+        // Load chart when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadChart();
+        });
     </script>
 </body>
 </html>
