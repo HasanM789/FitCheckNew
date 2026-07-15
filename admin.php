@@ -140,57 +140,29 @@ function getStatusBadge($status) {
     <link rel="stylesheet" href="styles.css">
     
     <!-- ============================================ -->
-    <!-- CHART.JS - LOADED DIRECTLY WITH FALLBACKS    -->
+    <!-- CHART.JS - LOADED DIRECTLY (SINGLE SOURCE)   -->
     <!-- ============================================ -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
     
     <script>
         // Check if Chart.js loaded successfully
-        var chartLoaded = false;
+        console.log('📊 Checking Chart.js from admin.php...');
         
         if (typeof Chart !== 'undefined') {
-            chartLoaded = true;
             console.log('✅ Chart.js loaded successfully from CDN!');
+            console.log('📊 Chart.js version:', Chart.version || 'unknown');
         } else {
             console.warn('⚠️ First CDN failed, trying fallback...');
-            // Fallback 1: jsdelivr
-            var script1 = document.createElement('script');
-            script1.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-            document.head.appendChild(script1);
-            
-            // Check after 2 seconds
-            setTimeout(function() {
-                if (typeof Chart !== 'undefined') {
-                    chartLoaded = true;
-                    console.log('✅ Chart.js loaded from fallback CDN (jsdelivr)!');
-                } else {
-                    console.warn('⚠️ Second CDN failed, trying third...');
-                    // Fallback 2: unpkg
-                    var script2 = document.createElement('script');
-                    script2.src = 'https://unpkg.com/chart.js';
-                    document.head.appendChild(script2);
-                    
-                    setTimeout(function() {
-                        if (typeof Chart !== 'undefined') {
-                            chartLoaded = true;
-                            console.log('✅ Chart.js loaded from fallback CDN (unpkg)!');
-                        } else {
-                            console.error('❌ All CDN attempts failed! Chart will not work.');
-                        }
-                    }, 2000);
-                }
-            }, 2000);
+            var script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+            script.onload = function() {
+                console.log('✅ Chart.js loaded from fallback CDN (jsdelivr)!');
+            };
+            script.onerror = function() {
+                console.error('❌ All CDN attempts failed!');
+            };
+            document.head.appendChild(script);
         }
-        
-        // Final check after all attempts
-        setTimeout(function() {
-            if (typeof Chart !== 'undefined') {
-                console.log('📊 Chart.js version:', Chart.version || 'unknown');
-                console.log('✅ Chart is ready to use!');
-            } else {
-                console.error('❌ Chart.js NOT loaded. Please check your internet connection.');
-            }
-        }, 5000);
     </script>
     
     <style>
@@ -679,7 +651,7 @@ function getStatusBadge($status) {
         // ============================================
         let salesChart = null;
         let chartAttempts = 0;
-        const MAX_ATTEMPTS = 10;
+        const MAX_ATTEMPTS = 15;
 
         function loadChart() {
             // Check if Chart.js is available
@@ -690,10 +662,13 @@ function getStatusBadge($status) {
                     setTimeout(loadChart, 500);
                 } else {
                     console.error('❌ Chart.js failed to load after ' + MAX_ATTEMPTS + ' attempts.');
-                    document.getElementById('salesChart').innerHTML = 
-                        '<div style="color: #dc3545; text-align: center; padding: 50px;">' +
-                        '❌ Chart.js failed to load. Please check your internet connection.' +
-                        '</div>';
+                    var canvas = document.getElementById('salesChart');
+                    if (canvas) {
+                        canvas.parentNode.innerHTML = 
+                            '<div style="color: #dc3545; text-align: center; padding: 50px; background: #1a1c22; border-radius: 8px;">' +
+                            '❌ Chart.js failed to load. Please refresh the page.' +
+                            '</div>';
+                    }
                 }
                 return;
             }
@@ -708,11 +683,26 @@ function getStatusBadge($status) {
                     return response.json();
                 })
                 .then(data => {
-                    const ctx = document.getElementById('salesChart').getContext('2d');
+                    console.log('📊 Chart data received:', data);
+                    
+                    // Check if we have data
+                    if (!data || !data.months || data.months.length === 0) {
+                        console.warn('⚠️ No chart data received from server');
+                        return;
+                    }
+                    
+                    const canvas = document.getElementById('salesChart');
+                    if (!canvas) {
+                        console.error('❌ Canvas element not found!');
+                        return;
+                    }
+                    
+                    const ctx = canvas.getContext('2d');
                     
                     // Destroy existing chart if it exists
                     if (salesChart) {
                         salesChart.destroy();
+                        salesChart = null;
                     }
                     
                     // Create new chart
@@ -723,7 +713,7 @@ function getStatusBadge($status) {
                             datasets: [
                                 {
                                     label: 'Revenue (BD)',
-                                    data: data.revenue,
+                                    data: data.revenue || [],
                                     backgroundColor: 'rgba(220, 53, 69, 0.7)',
                                     borderColor: '#dc3545',
                                     borderWidth: 2,
@@ -732,7 +722,7 @@ function getStatusBadge($status) {
                                 },
                                 {
                                     label: 'Orders',
-                                    data: data.orders,
+                                    data: data.orders || [],
                                     backgroundColor: 'rgba(40, 167, 69, 0.7)',
                                     borderColor: '#28a745',
                                     borderWidth: 2,
@@ -794,30 +784,39 @@ function getStatusBadge($status) {
                 })
                 .catch(error => {
                     console.error('❌ Error loading chart data:', error);
-                    document.getElementById('salesChart').innerHTML = 
-                        '<div style="color: #ffc107; text-align: center; padding: 50px;">' +
-                        '⚠️ Error loading chart data. Please refresh the page.' +
-                        '</div>';
+                    var canvas = document.getElementById('salesChart');
+                    if (canvas) {
+                        canvas.parentNode.innerHTML = 
+                            '<div style="color: #ffc107; text-align: center; padding: 50px; background: #1a1c22; border-radius: 8px;">' +
+                            '⚠️ Error loading chart data. Please refresh the page.' +
+                            '<br><small style="color: #94a3b8;">' + error.message + '</small>' +
+                            '</div>';
+                    }
                 });
         }
 
         function refreshChart() {
             console.log('🔄 Refreshing chart...');
             chartAttempts = 0;
-            loadChart();
+            // Reset the canvas container if it was replaced
+            var container = document.querySelector('.chart-wrapper');
+            if (container && !container.querySelector('canvas')) {
+                container.innerHTML = '<canvas id="salesChart"></canvas>';
+            }
+            setTimeout(loadChart, 500);
         }
 
         // Load chart when page loads - with multiple event listeners for safety
         document.addEventListener('DOMContentLoaded', function() {
             console.log('📄 DOM loaded, starting chart...');
-            setTimeout(loadChart, 500);
+            setTimeout(loadChart, 800);
         });
 
         // Also try on window load
         window.addEventListener('load', function() {
             console.log('📄 Window loaded, checking chart...');
-            if (typeof Chart === 'undefined') {
-                loadChart();
+            if (typeof Chart === 'undefined' || !salesChart) {
+                setTimeout(loadChart, 500);
             }
         });
 
@@ -828,6 +827,14 @@ function getStatusBadge($status) {
                 loadChart();
             }
         }, 3000);
+        
+        // Extra fallback - try after 5 seconds
+        setTimeout(function() {
+            if (typeof Chart !== 'undefined' && !salesChart) {
+                console.log('⏰ Final emergency chart load triggered...');
+                loadChart();
+            }
+        }, 5000);
     </script>
 </body>
 </html>
