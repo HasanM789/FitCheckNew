@@ -647,13 +647,13 @@ function getStatusBadge($status) {
         }
         
         // ============================================
-        // BAR CHART - SALES OVERVIEW (SINGLE LOAD)
+        // BAR CHART - SALES OVERVIEW (SINGLE LOAD - NO REFRESH)
         // ============================================
         let salesChart = null;
         let chartLoaded = false;
 
         function loadChart() {
-            // Prevent multiple loads
+            // ✅ CRITICAL FIX: Prevent multiple loads
             if (chartLoaded) {
                 console.log('📊 Chart already loaded, skipping...');
                 return;
@@ -662,37 +662,33 @@ function getStatusBadge($status) {
             // Check if Chart.js is available
             if (typeof Chart === 'undefined') {
                 console.log('⏳ Waiting for Chart.js...');
-                setTimeout(loadChart, 500);
+                setTimeout(loadChart, 300);
                 return;
             }
 
-            console.log('✅ Chart.js is ready! Loading chart data...');
+            console.log('📊 Loading chart data...');
             
             fetch('chart_data.php')
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error('Network response was not ok: ' + response.status);
+                        throw new Error('Network error: ' + response.status);
                     }
                     return response.json();
                 })
                 .then(data => {
-                    console.log('📊 Chart data received:', data);
-                    
                     const canvas = document.getElementById('salesChart');
                     if (!canvas) {
-                        console.error('❌ Canvas element not found!');
+                        console.error('❌ Canvas not found!');
                         return;
                     }
                     
                     const ctx = canvas.getContext('2d');
                     
-                    // Destroy existing chart if it exists
                     if (salesChart) {
                         salesChart.destroy();
                         salesChart = null;
                     }
                     
-                    // Create new chart
                     salesChart = new Chart(ctx, {
                         type: 'bar',
                         data: {
@@ -725,27 +721,19 @@ function getStatusBadge($status) {
                                 legend: {
                                     labels: {
                                         color: '#94a3b8',
-                                        font: {
-                                            size: 12
-                                        }
+                                        font: { size: 12 }
                                     }
                                 }
                             },
                             scales: {
                                 x: {
-                                    grid: {
-                                        color: '#2d2d2d'
-                                    },
-                                    ticks: {
-                                        color: '#94a3b8'
-                                    }
+                                    grid: { color: '#2d2d2d' },
+                                    ticks: { color: '#94a3b8' }
                                 },
                                 y: {
                                     beginAtZero: true,
                                     position: 'left',
-                                    grid: {
-                                        color: '#2d2d2d'
-                                    },
+                                    grid: { color: '#2d2d2d' },
                                     ticks: {
                                         color: '#94a3b8',
                                         callback: function(value) {
@@ -756,25 +744,23 @@ function getStatusBadge($status) {
                                 y1: {
                                     beginAtZero: true,
                                     position: 'right',
-                                    grid: {
-                                        drawOnChartArea: false
-                                    },
-                                    ticks: {
-                                        color: '#94a3b8'
-                                    }
+                                    grid: { drawOnChartArea: false },
+                                    ticks: { color: '#94a3b8' }
                                 }
                             }
                         }
                     });
                     
+                    // ✅ Mark as loaded - stops all future reloads
                     chartLoaded = true;
-                    console.log('✅ Chart created successfully!');
+                    console.log('✅ Chart loaded successfully!');
                 })
                 .catch(error => {
-                    console.error('❌ Error loading chart data:', error);
+                    console.error('❌ Error loading chart:', error);
                 });
         }
 
+        // Manual refresh button - only way to reload
         function refreshChart() {
             console.log('🔄 Manual refresh triggered...');
             chartLoaded = false;
@@ -782,22 +768,17 @@ function getStatusBadge($status) {
                 salesChart.destroy();
                 salesChart = null;
             }
-            setTimeout(loadChart, 500);
+            loadChart();
         }
 
-        // Load chart ONCE when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('📄 DOM loaded, starting chart...');
-            setTimeout(loadChart, 500);
-        });
-
-        // Only one fallback - try after 2 seconds if not loaded
-        setTimeout(function() {
-            if (typeof Chart !== 'undefined' && !chartLoaded) {
-                console.log('⏰ Fallback chart load triggered...');
-                loadChart();
-            }
-        }, 2000);
+        // ✅ Load chart ONLY ONCE when page is fully loaded
+        if (document.readyState === 'complete') {
+            setTimeout(loadChart, 300);
+        } else {
+            window.addEventListener('load', function() {
+                setTimeout(loadChart, 300);
+            });
+        }
     </script>
 </body>
 </html>
