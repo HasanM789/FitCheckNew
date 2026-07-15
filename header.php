@@ -32,7 +32,7 @@ if (isset($_SESSION['user_id'])) {
     <title>FitCheck — Premium Apparel</title>
     <link rel="stylesheet" href="styles.css">
     
-    <!-- Chart.js Library for Bar Charts -->
+    <!-- Chart.js Library - LOAD EARLY for admin charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <!-- Load theme before page renders -->
