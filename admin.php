@@ -138,6 +138,61 @@ function getStatusBadge($status) {
     <meta charset="UTF-8">
     <title>Admin Panel - FitCheck</title>
     <link rel="stylesheet" href="styles.css">
+    
+    <!-- ============================================ -->
+    <!-- CHART.JS - LOADED DIRECTLY WITH FALLBACKS    -->
+    <!-- ============================================ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    
+    <script>
+        // Check if Chart.js loaded successfully
+        var chartLoaded = false;
+        
+        if (typeof Chart !== 'undefined') {
+            chartLoaded = true;
+            console.log('✅ Chart.js loaded successfully from CDN!');
+        } else {
+            console.warn('⚠️ First CDN failed, trying fallback...');
+            // Fallback 1: jsdelivr
+            var script1 = document.createElement('script');
+            script1.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+            document.head.appendChild(script1);
+            
+            // Check after 2 seconds
+            setTimeout(function() {
+                if (typeof Chart !== 'undefined') {
+                    chartLoaded = true;
+                    console.log('✅ Chart.js loaded from fallback CDN (jsdelivr)!');
+                } else {
+                    console.warn('⚠️ Second CDN failed, trying third...');
+                    // Fallback 2: unpkg
+                    var script2 = document.createElement('script');
+                    script2.src = 'https://unpkg.com/chart.js';
+                    document.head.appendChild(script2);
+                    
+                    setTimeout(function() {
+                        if (typeof Chart !== 'undefined') {
+                            chartLoaded = true;
+                            console.log('✅ Chart.js loaded from fallback CDN (unpkg)!');
+                        } else {
+                            console.error('❌ All CDN attempts failed! Chart will not work.');
+                        }
+                    }, 2000);
+                }
+            }, 2000);
+        }
+        
+        // Final check after all attempts
+        setTimeout(function() {
+            if (typeof Chart !== 'undefined') {
+                console.log('📊 Chart.js version:', Chart.version || 'unknown');
+                console.log('✅ Chart is ready to use!');
+            } else {
+                console.error('❌ Chart.js NOT loaded. Please check your internet connection.');
+            }
+        }, 5000);
+    </script>
+    
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: #0f1115; color: #fff; font-family: 'Inter', Arial, sans-serif; padding: 20px; }
@@ -620,13 +675,38 @@ function getStatusBadge($status) {
         }
         
         // ============================================
-        // BAR CHART - SALES OVERVIEW
+        // BAR CHART - SALES OVERVIEW WITH RETRY LOGIC
         // ============================================
         let salesChart = null;
+        let chartAttempts = 0;
+        const MAX_ATTEMPTS = 10;
 
         function loadChart() {
+            // Check if Chart.js is available
+            if (typeof Chart === 'undefined') {
+                chartAttempts++;
+                if (chartAttempts < MAX_ATTEMPTS) {
+                    console.log(`⏳ Waiting for Chart.js... Attempt ${chartAttempts}/${MAX_ATTEMPTS}`);
+                    setTimeout(loadChart, 500);
+                } else {
+                    console.error('❌ Chart.js failed to load after ' + MAX_ATTEMPTS + ' attempts.');
+                    document.getElementById('salesChart').innerHTML = 
+                        '<div style="color: #dc3545; text-align: center; padding: 50px;">' +
+                        '❌ Chart.js failed to load. Please check your internet connection.' +
+                        '</div>';
+                }
+                return;
+            }
+
+            console.log('✅ Chart.js is ready! Loading chart data...');
+            
             fetch('chart_data.php')
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok: ' + response.status);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     const ctx = document.getElementById('salesChart').getContext('2d');
                     
@@ -709,18 +789,45 @@ function getStatusBadge($status) {
                             }
                         }
                     });
+                    
+                    console.log('✅ Chart created successfully!');
                 })
-                .catch(error => console.error('Error loading chart data:', error));
+                .catch(error => {
+                    console.error('❌ Error loading chart data:', error);
+                    document.getElementById('salesChart').innerHTML = 
+                        '<div style="color: #ffc107; text-align: center; padding: 50px;">' +
+                        '⚠️ Error loading chart data. Please refresh the page.' +
+                        '</div>';
+                });
         }
 
         function refreshChart() {
+            console.log('🔄 Refreshing chart...');
+            chartAttempts = 0;
             loadChart();
         }
 
-        // Load chart when page loads
+        // Load chart when page loads - with multiple event listeners for safety
         document.addEventListener('DOMContentLoaded', function() {
-            loadChart();
+            console.log('📄 DOM loaded, starting chart...');
+            setTimeout(loadChart, 500);
         });
+
+        // Also try on window load
+        window.addEventListener('load', function() {
+            console.log('📄 Window loaded, checking chart...');
+            if (typeof Chart === 'undefined') {
+                loadChart();
+            }
+        });
+
+        // Emergency fallback - try after 3 seconds
+        setTimeout(function() {
+            if (typeof Chart !== 'undefined' && !salesChart) {
+                console.log('⏰ Emergency chart load triggered...');
+                loadChart();
+            }
+        }, 3000);
     </script>
 </body>
 </html>
